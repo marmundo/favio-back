@@ -23,7 +23,7 @@ test.group('BookMark list', () => {
 
   test('display bookmarks by id', async ({ client }) => {
     const response = await client.get('/bookmarks/1')
-
     response.assertStatus(200)
+    response.assertBodyContains({ nome: 'IFRN' })
   })
 })
