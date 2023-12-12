@@ -1,22 +1,23 @@
 import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
-
-const favoritos = [{ id: 1, nome: 'Google', url: 'http://www.google.com', importante: true }]
+import BookMark from 'App/Models/BookMark'
+import { DateTime } from 'luxon'
 
 export default class BookmarksController {
   public async index({}: HttpContextContract) {
-    return favoritos
+    return BookMark.all()
   }
 
   public async store({ request, response }: HttpContextContract) {
     const { nome, url, importante } = request.body()
-    const newFavorito = { id: favoritos.length, nome, url, importante }
-    favoritos.push(newFavorito)
+    const newFavorito = { nome, url, importante }
+    BookMark.create(newFavorito)
     return response.status(201).send(newFavorito)
   }
 
   public async show({ params }: HttpContextContract) {
     // eslint-disable-next-line eqeqeq
-    let favoritoEncontrado = favoritos.find((favorito) => favorito.id == params.id)
+
+    let favoritoEncontrado = await BookMark.findByOrFail('id', params.id)
     if (favoritoEncontrado === undefined) return { msg: 'favorito nao encontrado' }
     return favoritoEncontrado
   }
@@ -24,25 +25,28 @@ export default class BookmarksController {
   public async update({ params, request, response }: HttpContextContract) {
     const { nome, url, importante } = request.body()
     // eslint-disable-next-line eqeqeq
-    let favoritoEncontrado = favoritos.find((favorito) => favorito.id == params.id)
+    let favoritoEncontrado = await BookMark.findByOrFail('id', params.id)
     if (!favoritoEncontrado) {
       return response.status(404).json({ error: 'Favorite not found' })
     }
 
-    const index = favoritos.indexOf(favoritoEncontrado)
-    favoritos[index] = { id: index, nome, url, importante }
-    return response.status(201).json({ id: index, nome, url, importante })
+    favoritoEncontrado.nome = nome
+    favoritoEncontrado.url = url
+    favoritoEncontrado.importante = importante
+    await favoritoEncontrado.save()
+    await favoritoEncontrado.merge({ updatedAt: DateTime.local() }).save()
+
+    return response.status(201).json(favoritoEncontrado)
   }
 
   public async destroy({ params, response }: HttpContextContract) {
     // eslint-disable-next-line eqeqeq
-    let favoritoEncontrado = favoritos.find((favorito) => favorito.id == params.id)
-    if (!favoritoEncontrado) {
+    const favorito = await BookMark.findByOrFail('id', params.id)
+    await favorito.delete()
+    if (!favorito) {
       return response.status(404).json({ error: 'Favorite not found' })
     }
 
-    const index = favoritos.indexOf(favoritoEncontrado)
-    favoritos.splice(index, 1)
     return response.status(204)
   }
 }
